@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+**/dist
+**/.next
+coverage
+.env
+.env.*
+!.env.example
+*.log
+*.pid
+.git
+.github
+tmp
+uploads

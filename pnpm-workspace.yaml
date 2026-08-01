@@ -1,0 +1,14 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  "@nestjs/core": true
+  "@parcel/watcher": true
+  "@scarf/scarf": true
+  "argon2": true
+  "cpu-features": true
+  "esbuild": true
+  msgpackr-extract: set this to true or false
+  "protobufjs": true
+  "sharp": true
+  "ssh2": true

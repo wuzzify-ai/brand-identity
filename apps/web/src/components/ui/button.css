@@ -1,0 +1,39 @@
+.ui-button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ui-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ui-button-primary {
+  background: var(--color-signal);
+  color: var(--color-paper);
+}
+
+.ui-button-primary:hover {
+  background: var(--color-signal-strong);
+}
+
+.ui-button-secondary {
+  background: var(--color-paper);
+  border-color: var(--color-border);
+  color: var(--color-ink);
+}
+
+.ui-button-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+}

@@ -1,0 +1,35 @@
+{
+  "name": "wuzzify-brand-identity-v3",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.13.0",
+  "description": "AI generated brand identity creator for Wuzzify.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "concurrently -n web,api,worker -c cyan,magenta,green \"pnpm --filter @wuzzify/brand-identity-web dev\" \"pnpm --filter @wuzzify/brand-identity-api start:dev\" \"pnpm --filter @wuzzify/brand-identity-worker dev\"",
+    "build": "pnpm -r build",
+    "ci:verify": "pnpm --filter @wuzzify/brand-design-tokens build && pnpm -r typecheck && pnpm -r lint && pnpm -r test && pnpm -r build",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "format": "prettier --write .",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:reset": "docker compose down -v",
+    "db:migrate": "pnpm --filter @wuzzify/brand-identity-api migration:run",
+    "db:revert": "pnpm --filter @wuzzify/brand-identity-api migration:revert",
+    "db:generate": "pnpm --filter @wuzzify/brand-identity-api migration:generate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@next/eslint-plugin-next": "^16.2.10",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.32.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0",
+    "vitest": "^3.2.4"
+  }
+}

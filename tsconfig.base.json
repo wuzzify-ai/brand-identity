@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@wuzzify/brand-contracts": ["packages/contracts/src/index.ts"],
+      "@wuzzify/brand-ai-schemas": ["packages/ai-schemas/src/index.ts"],
+      "@wuzzify/brand-design-tokens": ["packages/design-tokens/dist/index.d.ts"]
+    }
+  }
+}
