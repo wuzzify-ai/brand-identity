@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { z } from 'zod';
 import { AuthFormShell } from '../../../src/components/auth/auth-form-shell';
@@ -25,6 +26,7 @@ const registerSchema = z.object({
 type RegisterFieldErrors = Partial<Record<keyof z.infer<typeof registerSchema>, string>>;
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
@@ -57,7 +59,8 @@ export default function RegisterPage() {
 
     try {
       const response = await authApi.register(parsed.data);
-      setMessage(response.message ?? 'Check your email to verify the account.');
+      setMessage(response.message ?? 'Account created. You can sign in.');
+      router.replace('/login?registered=1');
     } catch (caught) {
       setError(normalizeApiError(caught).message);
     } finally {

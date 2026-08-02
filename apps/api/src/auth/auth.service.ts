@@ -67,21 +67,19 @@ export class AuthService {
     this.rateLimiter.consume(`register:email:${dto.email}`, 5, 60 * 60 * 1000);
     this.passwordPolicy.assertAcceptable(dto.password);
 
-    const rawToken = this.tokenHash.generateRawToken();
-    const tokenHash = this.tokenHash.hash(rawToken);
     const passwordHash = await argonHash(dto.password, {
       type: 2,
       memoryCost: 19_456,
       timeCost: 2,
       parallelism: 1
     });
-    const verificationTtlHours = this.config.get<number>('EMAIL_VERIFICATION_TTL_HOURS', 24);
-
     try {
       await this.dataSource.transaction(async (manager) => {
         const userRows = await manager.query<{ id: string }[]>(
-          `INSERT INTO users (email, display_name, status) VALUES ($1, $2, $3) RETURNING id`,
-          [dto.email, dto.displayName.trim(), UserAccountStatus.PendingVerification]
+          `INSERT INTO users (email, display_name, status, email_verified_at)
+           VALUES ($1, $2, $3, now())
+           RETURNING id`,
+          [dto.email, dto.displayName.trim(), UserAccountStatus.Active]
         );
         const userId = userRows[0]?.id;
 
@@ -101,11 +99,6 @@ export class AuthService {
           [workspaceId, userId, WorkspaceRole.Owner, MembershipStatus.Active]
         );
 
-        await manager.query(
-          `INSERT INTO email_verification_tokens (user_id, token_hash, email_snapshot, expires_at)
-           VALUES ($1, $2, $3, now() + ($4 || ' hours')::interval)`,
-          [userId, tokenHash, dto.email, verificationTtlHours]
-        );
       });
     } catch (error) {
       if (this.isUniqueViolation(error)) {
@@ -115,8 +108,10 @@ export class AuthService {
       throw error;
     }
 
-    await this.email.sendVerificationEmail(dto.email, rawToken);
-    return this.genericVerificationResponse();
+    return {
+      ok: true,
+      message: 'Account created. You can sign in.'
+    };
   }
 
   async login(dto: LoginDto, metadata: { ipKey: string; userAgent?: string }): Promise<AuthTokenResponse & { refreshToken: string; refreshMaxAgeMs: number }> {

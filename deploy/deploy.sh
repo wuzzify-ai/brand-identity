@@ -8,6 +8,8 @@ APP_NAME="${APP_NAME:-brand-identity}"
 APP_USER="${APP_USER:-brandapp}"
 APP_DIR="${APP_DIR:-/srv/${APP_NAME}}"
 DOMAIN="${DOMAIN:-}"
+WEB_PORT="${WEB_PORT:-3001}"
+API_PORT="${API_PORT:-4000}"
 SOURCE_DIR="${SOURCE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 ENABLE_TLS="${ENABLE_TLS:-0}"
 LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"
@@ -22,6 +24,8 @@ run_app() { runuser -u "${APP_USER}" -- env HOME="/home/${APP_USER}" PM2_HOME="/
 [[ "${EUID}" -eq 0 ]] || die "Run as root (sudo bash deploy/deploy.sh)."
 [[ -n "${DOMAIN}" ]] || die "Set DOMAIN, for example DOMAIN=app.example.com."
 [[ "${DOMAIN}" =~ ^[A-Za-z0-9.-]+$ ]] || die "DOMAIN contains unsupported characters."
+[[ "${WEB_PORT}" =~ ^[0-9]+$ && "${WEB_PORT}" -ge 1 && "${WEB_PORT}" -le 65535 ]] || die "WEB_PORT must be a valid port."
+[[ "${API_PORT}" =~ ^[0-9]+$ && "${API_PORT}" -ge 1 && "${API_PORT}" -le 65535 ]] || die "API_PORT must be a valid port."
 [[ -n "${OPENROUTER_API_KEY}" ]] || die "Set OPENROUTER_API_KEY before deploying."
 [[ -n "${SMTP_URL}" ]] || die "Set SMTP_URL to a real SMTP provider before deploying."
 [[ -d "${SOURCE_DIR}" && -f "${SOURCE_DIR}/pnpm-lock.yaml" ]] || die "SOURCE_DIR must point to the project checkout."
@@ -57,10 +61,10 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   S3_SECRET="$(openssl rand -hex 32)"
   cat > "${ENV_FILE}" <<EOF
 NODE_ENV=production
-WEB_PORT=3000
+WEB_PORT=${WEB_PORT}
 NEXT_PUBLIC_API_BASE_URL=https://${DOMAIN}/v1
 NEXT_PUBLIC_APP_URL=https://${DOMAIN}
-API_PORT=4000
+API_PORT=${API_PORT}
 API_PUBLIC_URL=https://${DOMAIN}
 WEB_ORIGIN=https://${DOMAIN}
 WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-2}
@@ -148,7 +152,7 @@ module.exports = {
       name: 'brand-web',
       cwd: '${APP_DIR}/apps/web',
       script: 'node_modules/next/dist/bin/next',
-      args: 'start --port 3000',
+      args: 'start --port ${WEB_PORT}',
       env: { NODE_ENV: 'production' },
       max_memory_restart: '512M',
       time: true
@@ -167,6 +171,7 @@ systemctl enable "pm2-${APP_USER}" || true
 log "Installing Nginx configuration"
 NGINX_AVAILABLE="/etc/nginx/sites-available/${APP_NAME}"
 sed -e "s|__DOMAIN__|${DOMAIN}|g" -e "s|__APP_DIR__|${APP_DIR}|g" \
+  -e "s|__WEB_PORT__|${WEB_PORT}|g" -e "s|__API_PORT__|${API_PORT}|g" \
   "${SOURCE_DIR}/deploy/nginx.conf.template" > "${NGINX_AVAILABLE}"
 ln -sfn "${NGINX_AVAILABLE}" "/etc/nginx/sites-enabled/${APP_NAME}"
 rm -f /etc/nginx/sites-enabled/default
@@ -182,8 +187,8 @@ fi
 
 log "Checking application health"
 for attempt in {1..30}; do
-  if curl --fail --silent --show-error http://127.0.0.1:4000/v1/health/live >/dev/null \
-    && curl --fail --silent --show-error http://127.0.0.1:3000 >/dev/null; then
+  if curl --fail --silent --show-error "http://127.0.0.1:${API_PORT}/v1/health/live" >/dev/null \
+    && curl --fail --silent --show-error "http://127.0.0.1:${WEB_PORT}" >/dev/null; then
     break
   fi
   [[ "${attempt}" -eq 30 ]] && die "Application health checks did not pass. Inspect PM2 logs."

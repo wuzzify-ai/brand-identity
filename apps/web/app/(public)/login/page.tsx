@@ -24,6 +24,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = useAuth();
+  const registrationCompleted = searchParams.get('registered') === '1';
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -65,6 +66,7 @@ function LoginContent() {
         <TextField id="password" name="password" label="Password" type="password" autoComplete="current-password" required />
         <TextField id="deviceName" name="deviceName" label="Device name" placeholder="Work laptop" />
         {error ? <p role="alert" style={{ color: 'var(--color-coral)', margin: 0 }}>{error}</p> : null}
+        {registrationCompleted ? <p role="status" className="section-copy">Account created. You can sign in.</p> : null}
         <Button type="submit" disabled={pending}>{pending ? 'Signing in...' : 'Sign in'}</Button>
         <Link href="/forgot-password" className="section-copy">Forgot password?</Link>
       </form>
