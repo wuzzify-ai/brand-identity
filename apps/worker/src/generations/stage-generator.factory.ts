@@ -5,6 +5,9 @@ import type { DataSource } from 'typeorm';
 export interface StageGenerationJob {
   id: string;
   identityVersionId: string;
+  brandContextPackageId: string | null;
+  brandContextPackageChecksumSha256: string | null;
+  brandContextPackage: Record<string, unknown> | null;
   workflowStageKey: string;
   task: string;
   tier: string;

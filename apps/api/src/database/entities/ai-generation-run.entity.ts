@@ -10,6 +10,12 @@ export class AiGenerationRunEntity {
   @Column({ name: 'generation_job_id', type: 'uuid' })
   generationJobId!: string;
 
+  @Column({ name: 'brand_context_package_id', type: 'uuid', nullable: true })
+  brandContextPackageId!: string | null;
+
+  @Column({ name: 'brand_context_package_checksum_sha256', type: 'char', length: 64, nullable: true })
+  brandContextPackageChecksumSha256!: string | null;
+
   @Column({ name: 'attempt_number', type: 'integer' })
   attemptNumber!: number;
 

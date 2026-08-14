@@ -20,6 +20,26 @@ export class StrategiesController {
     return this.strategies.get(workspaceId, projectId, versionId);
   }
 
+  @Get('competitor-research')
+  @RequireWorkspaceRole(WorkspaceRole.Viewer)
+  competitorResearchList(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string
+  ) {
+    return this.strategies.listCompetitorResearch(workspaceId, projectId, versionId);
+  }
+
+  @Get('competitor-research/current')
+  @RequireWorkspaceRole(WorkspaceRole.Viewer)
+  currentCompetitorResearch(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string
+  ) {
+    return this.strategies.currentCompetitorResearch(workspaceId, projectId, versionId);
+  }
+
   @Put()
   @RequireWorkspaceRole(WorkspaceRole.Editor)
   update(

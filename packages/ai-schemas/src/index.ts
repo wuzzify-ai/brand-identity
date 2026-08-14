@@ -49,6 +49,7 @@ export const generationTaskSchema = z.enum([
   'VISUAL_DIRECTIONS_GENERATE',
   'VISUAL_VARIATION_GENERATE',
   'LOGO_CONCEPTS_GENERATE',
+  'COMPETITOR_RESEARCH',
   'BRAND_BOOK_NARRATIVE_GENERATE',
   'QUALITY_REVIEW'
 ]);
@@ -192,6 +193,61 @@ const visualDirectionJsonSchema = {
   required: ['id', 'name', 'rationale', 'moodKeywords', 'colors', 'fonts', 'imagery', 'layoutNotes']
 };
 
+const competitorResearchJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    summary: { type: 'string' },
+    searchQueries: stringArraySchema,
+    limitations: stringArraySchema,
+    competitors: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string' },
+          websiteUrl: { type: 'string' },
+          category: { type: 'string' },
+          positioning: { type: 'string' },
+          summary: { type: 'string' },
+          strengths: stringArraySchema,
+          weaknesses: stringArraySchema,
+          differentiators: stringArraySchema,
+          evidenceSummary: { type: 'string' },
+          citations: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                title: { type: 'string' },
+                url: { type: 'string' },
+                publisher: { type: 'string' },
+                snippet: { type: 'string' }
+              },
+              required: ['title', 'url', 'publisher', 'snippet']
+            }
+          }
+        },
+        required: [
+          'name',
+          'websiteUrl',
+          'category',
+          'positioning',
+          'summary',
+          'strengths',
+          'weaknesses',
+          'differentiators',
+          'evidenceSummary',
+          'citations'
+        ]
+      }
+    }
+  },
+  required: ['summary', 'searchQueries', 'limitations', 'competitors']
+};
+
 export const aiTaskContracts: AiTaskContract[] = [
   {
     schemaId: 'brand-identity.ai.brief-extract.v1',
@@ -272,6 +328,24 @@ export const aiTaskContracts: AiTaskContract[] = [
       },
       required: ['directions']
     }
+  },
+  {
+    schemaId: 'brand-identity.ai.competitor-research.v1',
+    task: 'COMPETITOR_RESEARCH',
+    modality: 'TEXT',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        brief: briefJsonSchema,
+        competitorNames: stringArraySchema,
+        market: { type: 'string' },
+        maxCompetitors: { type: 'integer', minimum: 1, maximum: 8 },
+        userInstructions: { type: 'string' }
+      },
+      required: ['brief', 'competitorNames', 'market', 'maxCompetitors', 'userInstructions']
+    },
+    outputSchema: competitorResearchJsonSchema
   },
   {
     schemaId: 'brand-identity.ai.visual-variation-generate.v1',

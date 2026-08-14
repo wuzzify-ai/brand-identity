@@ -1,5 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Brand Identity Creator">
-  <rect width="64" height="64" rx="18" fill="#111827"/>
-  <path d="M18 42V18h16.5c5.8 0 9.9 3.5 9.9 8.4 0 2.8-1.3 5-3.6 6.4 3.1 1.2 5 3.9 5 7.2 0 5.5-4.4 9-11.2 9H18Zm7.4-14.2h8.1c2.2 0 3.5-1.1 3.5-2.9s-1.3-2.9-3.5-2.9h-8.1v5.8Zm0 14.2h8.8c2.6 0 4.1-1.3 4.1-3.4s-1.5-3.4-4.1-3.4h-8.8V42Z" fill="#F9FAFB"/>
-  <circle cx="48" cy="18" r="5" fill="#14B8A6"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122 122" role="img" aria-label="Wuzzify">
+  <rect width="122" height="122" rx="24" fill="#4C3491"/>
+  <g transform="translate(0 17)" fill="#FFFFFF">
+    <rect x="0" y="0" width="25" height="64" rx="1.5"/>
+    <rect x="49" y="0" width="24" height="64" rx="1.5"/>
+    <rect x="98" y="21" width="24" height="43" rx="1.5"/>
+    <polygon points="18,66 48,66 48,87 27,87"/>
+    <polygon points="66,66 97,66 97,87 76,87"/>
+  </g>
 </svg>

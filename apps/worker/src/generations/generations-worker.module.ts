@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { AiWorkerModule } from '../ai/ai-worker.module.js';
 import { BriefGenerator } from '../brief-generator/brief-generator.js';
+import { CompetitorResearchGenerator } from '../competitor-research-generator/competitor-research-generator.js';
 import { StrategyGenerator } from '../strategy-generator/strategy-generator.js';
 import { VisualDirectionGenerator } from '../visual-generator/visual-direction-generator.js';
 import { ImageTransportModule } from '../image-transport/image-transport.module.js';
 import { LogoConceptGenerator } from '../logo-concept-generator/logo-concept-generator.js';
+import { QualityReviewGenerator } from '../quality-review-generator/quality-review-generator.js';
 import { GenerationWorkerService } from './generation-worker.service.js';
 import { StageGeneratorFactory } from './stage-generator.factory.js';
 
@@ -14,9 +16,11 @@ import { StageGeneratorFactory } from './stage-generator.factory.js';
     GenerationWorkerService,
     StageGeneratorFactory,
     BriefGenerator,
+    CompetitorResearchGenerator,
     StrategyGenerator,
     VisualDirectionGenerator,
     LogoConceptGenerator,
+    QualityReviewGenerator,
     {
       provide: 'BRIEF_GENERATOR_REGISTRATION',
       useFactory: (factory: StageGeneratorFactory, generator: BriefGenerator) => {
@@ -36,6 +40,14 @@ import { StageGeneratorFactory } from './stage-generator.factory.js';
       inject: [StageGeneratorFactory, StrategyGenerator]
     },
     {
+      provide: 'COMPETITOR_RESEARCH_GENERATOR_REGISTRATION',
+      useFactory: (factory: StageGeneratorFactory, generator: CompetitorResearchGenerator) => {
+        factory.register('COMPETITOR_RESEARCH', generator);
+        return true;
+      },
+      inject: [StageGeneratorFactory, CompetitorResearchGenerator]
+    },
+    {
       provide: 'VISUAL_DIRECTION_GENERATOR_REGISTRATION',
       useFactory: (factory: StageGeneratorFactory, generator: VisualDirectionGenerator) => {
         factory.register('VISUAL_DIRECTIONS_GENERATE', generator);
@@ -51,6 +63,14 @@ import { StageGeneratorFactory } from './stage-generator.factory.js';
         return true;
       },
       inject: [StageGeneratorFactory, LogoConceptGenerator]
+    },
+    {
+      provide: 'QUALITY_REVIEW_GENERATOR_REGISTRATION',
+      useFactory: (factory: StageGeneratorFactory, generator: QualityReviewGenerator) => {
+        factory.register('QUALITY_REVIEW', generator);
+        return true;
+      },
+      inject: [StageGeneratorFactory, QualityReviewGenerator]
     }
   ]
 })

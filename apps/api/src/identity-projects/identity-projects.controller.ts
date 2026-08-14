@@ -5,7 +5,13 @@ import { CurrentUserGuard } from '../auth/guards/current-user.guard';
 import { WorkspaceRole } from '../database/entities';
 import { RequireWorkspaceRole } from '../workspaces/decorators/workspace-roles.decorator';
 import { WorkspaceMembershipGuard } from '../workspaces/guards/workspace-membership.guard';
-import { CloneIdentityVersionDto, CreateIdentityProjectDto, UpdateIdentityProjectDto } from './dto/identity-project.dto';
+import {
+  AutopilotRunEventDto,
+  CloneIdentityVersionDto,
+  CreateIdentityProjectDto,
+  FinishAutopilotRunDto,
+  UpdateIdentityProjectDto
+} from './dto/identity-project.dto';
 import { IdentityProjectsService } from './identity-projects.service';
 
 @ApiTags('identity-projects')
@@ -66,6 +72,151 @@ export class IdentityProjectsController {
   @RequireWorkspaceRole(WorkspaceRole.Viewer)
   versions(@Param('workspaceId') workspaceId: string, @Param('projectId') projectId: string) {
     return this.projects.versions(workspaceId, projectId);
+  }
+
+  @Get(':projectId/versions/:versionId/activity')
+  @RequireWorkspaceRole(WorkspaceRole.Viewer)
+  activity(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string
+  ) {
+    return this.projects.activity(workspaceId, projectId, versionId);
+  }
+
+  @Get(':projectId/versions/:versionId/handoffs')
+  @RequireWorkspaceRole(WorkspaceRole.Viewer)
+  handoffs(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string
+  ) {
+    return this.projects.handoffs(workspaceId, projectId, versionId);
+  }
+
+  @Get(':projectId/versions/:versionId/readiness')
+  @RequireWorkspaceRole(WorkspaceRole.Viewer)
+  readiness(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string
+  ) {
+    return this.projects.readiness(workspaceId, projectId, versionId);
+  }
+
+  @Get(':projectId/versions/:versionId/autopilot/current')
+  @RequireWorkspaceRole(WorkspaceRole.Viewer)
+  currentAutopilot(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string
+  ) {
+    return this.projects.currentAutopilot(workspaceId, projectId, versionId);
+  }
+
+  @Get(':projectId/versions/:versionId/autopilot/history')
+  @RequireWorkspaceRole(WorkspaceRole.Viewer)
+  autopilotHistory(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string,
+    @Query('limit') limit?: string
+  ) {
+    return this.projects.autopilotHistory(workspaceId, projectId, versionId, limit ? Number(limit) : undefined);
+  }
+
+  @Post(':projectId/versions/:versionId/autopilot/start')
+  @RequireWorkspaceRole(WorkspaceRole.Editor)
+  startAutopilot(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string,
+    @CurrentUserId() userId: string
+  ) {
+    return this.projects.startAutopilot(workspaceId, projectId, versionId, userId);
+  }
+
+  @Post(':projectId/versions/:versionId/autopilot/advance')
+  @RequireWorkspaceRole(WorkspaceRole.Editor)
+  advanceAutopilot(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string,
+    @CurrentUserId() userId: string
+  ) {
+    return this.projects.advanceAutopilot(workspaceId, projectId, versionId, userId);
+  }
+
+  @Post(':projectId/versions/:versionId/autopilot/runs/:runId/events')
+  @RequireWorkspaceRole(WorkspaceRole.Editor)
+  appendAutopilotEvent(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string,
+    @Param('runId') runId: string,
+    @Body() body: AutopilotRunEventDto
+  ) {
+    return this.projects.appendAutopilotEvent(workspaceId, projectId, versionId, runId, body);
+  }
+
+  @Post(':projectId/versions/:versionId/autopilot/runs/:runId/pause')
+  @RequireWorkspaceRole(WorkspaceRole.Editor)
+  pauseAutopilot(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string,
+    @Param('runId') runId: string,
+    @Body() body: FinishAutopilotRunDto
+  ) {
+    return this.projects.pauseAutopilot(workspaceId, projectId, versionId, runId, body.reason ?? 'Human review is required.');
+  }
+
+  @Post(':projectId/versions/:versionId/autopilot/runs/:runId/complete')
+  @RequireWorkspaceRole(WorkspaceRole.Editor)
+  completeAutopilot(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string,
+    @Param('runId') runId: string,
+    @Body() body: FinishAutopilotRunDto
+  ) {
+    return this.projects.completeAutopilot(workspaceId, projectId, versionId, runId, body.reason ?? 'Autopilot completed.');
+  }
+
+  @Post(':projectId/versions/:versionId/autopilot/runs/:runId/fail')
+  @RequireWorkspaceRole(WorkspaceRole.Editor)
+  failAutopilot(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string,
+    @Param('runId') runId: string,
+    @Body() body: FinishAutopilotRunDto
+  ) {
+    return this.projects.failAutopilot(workspaceId, projectId, versionId, runId, body.errorMessage ?? body.reason ?? 'Autopilot failed.');
+  }
+
+  @Post(':projectId/versions/:versionId/autopilot/runs/:runId/cancel')
+  @RequireWorkspaceRole(WorkspaceRole.Editor)
+  cancelAutopilot(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string,
+    @Param('runId') runId: string,
+    @Body() body: FinishAutopilotRunDto
+  ) {
+    return this.projects.cancelAutopilot(workspaceId, projectId, versionId, runId, body.reason ?? 'Autopilot cancelled by user.');
+  }
+
+  @Post(':projectId/versions/:versionId/autopilot/runs/:runId/retry')
+  @RequireWorkspaceRole(WorkspaceRole.Editor)
+  retryAutopilot(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Param('versionId') versionId: string,
+    @Param('runId') runId: string,
+    @CurrentUserId() userId: string
+  ) {
+    return this.projects.retryAutopilot(workspaceId, projectId, versionId, runId, userId);
   }
 
   @Post(':projectId/versions/clone')

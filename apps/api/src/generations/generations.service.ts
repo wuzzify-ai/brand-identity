@@ -18,11 +18,20 @@ export interface GenerationJobRow {
   id: string;
   workspace_id: string;
   identity_version_id: string;
+  brand_context_package_id: string | null;
+  brand_context_package_checksum_sha256: string | null;
   status: GenerationJobStatus;
   idempotency_key: string;
   bullmq_job_id: string | null;
   updated_at?: Date | string;
 }
+
+type VersionPinRow = {
+  id: string;
+  active_version_id: string | null;
+  active_context_package_id: string | null;
+  active_context_package_checksum_sha256: string | null;
+};
 
 export interface GenerationStateResponse {
   job: GenerationJobRow;
@@ -64,10 +73,16 @@ export class GenerationsService {
 
       await this.assertMonthlyBudgetAvailable(dto.workspaceId);
 
-      const versionRows = await manager.query<{ id: string }[]>(
-        `SELECT identity_versions.id
+      const versionRows = await manager.query<VersionPinRow[]>(
+        `SELECT identity_versions.id,
+                identity_projects.active_version_id,
+                identity_projects.active_context_package_id,
+                brand_context_packages.checksum_sha256 AS active_context_package_checksum_sha256
          FROM identity_versions
          JOIN identity_projects ON identity_projects.id = identity_versions.identity_project_id
+         LEFT JOIN brand_context_packages
+           ON brand_context_packages.id = identity_projects.active_context_package_id
+          AND brand_context_packages.status = 'PUBLISHED'
          WHERE identity_versions.id = $1
            AND identity_projects.workspace_id = $2
            AND identity_projects.status = 'ACTIVE'`,
@@ -77,6 +92,12 @@ export class GenerationsService {
       if (!versionRows[0]) {
         throw new DomainError('IDENTITY_VERSION_NOT_FOUND', 'Identity version was not found.', 404);
       }
+      const versionPin = versionRows[0];
+      const brandContextPackageId =
+        versionPin.active_version_id === dto.identityVersionId ? versionPin.active_context_package_id : null;
+      const brandContextPackageChecksumSha256 = brandContextPackageId
+        ? versionPin.active_context_package_checksum_sha256
+        : null;
 
       const stageRows = await manager.query<{ id: string }[]>(
         `SELECT id FROM workflow_stages WHERE identity_version_id = $1 AND stage_key = $2`,
@@ -92,9 +113,10 @@ export class GenerationsService {
       const insertedRows = await manager.query<GenerationJobRow[]>(
         `INSERT INTO generation_jobs (
           workspace_id, identity_version_id, workflow_stage_key, task, tier, idempotency_key,
-          requested_by_user_id, input, progress_percent, progress_message, max_attempts
+          requested_by_user_id, input, brand_context_package_id, brand_context_package_checksum_sha256,
+          progress_percent, progress_message, max_attempts
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, 5, 'Queued for generation.', $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::uuid, $10, 5, 'Queued for generation.', $11)
         RETURNING *`,
         [
           dto.workspaceId,
@@ -105,6 +127,8 @@ export class GenerationsService {
           idempotencyKey,
           userId,
           JSON.stringify(dto.input ?? {}),
+          brandContextPackageId,
+          brandContextPackageChecksumSha256,
           dto.maxAttempts ?? 2
         ]
       );
@@ -240,7 +264,11 @@ export class GenerationsService {
     identityVersionId: string,
     task: GenerationTask
   ): Promise<void> {
-    if (task !== GenerationTask.StrategyGenerate && task !== GenerationTask.StrategySectionRegenerate) {
+    if (
+      task !== GenerationTask.StrategyGenerate &&
+      task !== GenerationTask.StrategySectionRegenerate &&
+      task !== GenerationTask.CompetitorResearch
+    ) {
       return;
     }
 

@@ -43,6 +43,12 @@ export interface StrategyAggregateResponse {
   rules: unknown[];
 }
 
+export interface CompetitorResearchAggregateResponse {
+  research: unknown | null;
+  competitors: unknown[];
+  citations: unknown[];
+}
+
 @Injectable()
 export class StrategiesService {
   constructor(private readonly dataSource: DataSource) {}
@@ -51,6 +57,34 @@ export class StrategiesService {
     await this.assertVersionAccess(workspaceId, projectId, versionId);
     const strategy = await this.ensureStrategy(versionId);
     return this.readAggregate(strategy.id);
+  }
+
+  async listCompetitorResearch(workspaceId: string, projectId: string, versionId: string) {
+    await this.assertVersionAccess(workspaceId, projectId, versionId);
+    return this.dataSource.query(
+      `SELECT id, identity_version_id, generation_job_id, revision, status, summary,
+              search_queries, limitations, metadata, is_current, created_at, updated_at
+       FROM competitor_researches
+       WHERE identity_version_id = $1
+       ORDER BY revision DESC, created_at DESC`,
+      [versionId]
+    );
+  }
+
+  async currentCompetitorResearch(
+    workspaceId: string,
+    projectId: string,
+    versionId: string
+  ): Promise<CompetitorResearchAggregateResponse> {
+    await this.assertVersionAccess(workspaceId, projectId, versionId);
+    const rows = await this.dataSource.query<Array<{ id: string }>>(
+      `SELECT id FROM competitor_researches WHERE identity_version_id = $1 AND is_current AND status = 'READY'`,
+      [versionId]
+    );
+    if (!rows[0]) {
+      return { research: null, competitors: [], citations: [] };
+    }
+    return this.readCompetitorResearchAggregate(rows[0].id);
   }
 
   async update(
@@ -190,6 +224,30 @@ export class StrategiesService {
     if (!rows[0]) {
       throw new DomainError('IDENTITY_VERSION_NOT_FOUND', 'Identity version was not found.', 404);
     }
+  }
+
+  private async readCompetitorResearchAggregate(researchId: string): Promise<CompetitorResearchAggregateResponse> {
+    const [researchRows, competitors, citations] = await Promise.all([
+      this.dataSource.query(`SELECT * FROM competitor_researches WHERE id = $1`, [researchId]),
+      this.dataSource.query(
+        `SELECT * FROM brand_competitors WHERE competitor_research_id = $1 ORDER BY sort_order, id`,
+        [researchId]
+      ),
+      this.dataSource.query(
+        `SELECT brand_competitor_citations.*
+         FROM brand_competitor_citations
+         JOIN brand_competitors ON brand_competitors.id = brand_competitor_citations.brand_competitor_id
+         WHERE brand_competitors.competitor_research_id = $1
+         ORDER BY brand_competitors.sort_order, brand_competitor_citations.sort_order, brand_competitor_citations.id`,
+        [researchId]
+      )
+    ]);
+
+    return {
+      research: researchRows[0] ?? null,
+      competitors,
+      citations
+    };
   }
 
   private async assertBriefComplete(versionId: string): Promise<void> {

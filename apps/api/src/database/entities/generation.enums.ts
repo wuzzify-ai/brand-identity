@@ -23,6 +23,7 @@ export enum GenerationTask {
   VisualDirectionsGenerate = 'VISUAL_DIRECTIONS_GENERATE',
   VisualVariationGenerate = 'VISUAL_VARIATION_GENERATE',
   LogoConceptsGenerate = 'LOGO_CONCEPTS_GENERATE',
+  CompetitorResearch = 'COMPETITOR_RESEARCH',
   BrandBookNarrativeGenerate = 'BRAND_BOOK_NARRATIVE_GENERATE',
   QualityReview = 'QUALITY_REVIEW'
 }

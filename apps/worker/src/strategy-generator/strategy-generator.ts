@@ -84,6 +84,7 @@ export class StrategyGenerator implements StageGenerator {
     const input = strategyInputSchema.parse(job.input);
     const policy = await this.policies.resolve(job.task, job.tier);
     const brief = await this.loadConfirmedBrief(job.identityVersionId);
+    const competitorResearch = await this.loadCurrentCompetitorResearch(job.identityVersionId);
 
     const response = await this.openRouter.generate({
       policy: { ...policy, output_schema: generatedStrategyOutputSchema },
@@ -92,7 +93,7 @@ export class StrategyGenerator implements StageGenerator {
           ? 'brand_identity_ai_strategy_section_regenerate_v1'
           : 'brand_identity_ai_strategy_generate_v1',
       userKey: job.id,
-      messages: this.messages(job.task, input, brief)
+      messages: this.messages(job.task, input, brief, competitorResearch)
     });
     const normalized = normalizeGeneratedStrategy(response.data, brief.constraints);
 
@@ -140,13 +141,67 @@ export class StrategyGenerator implements StageGenerator {
     return { ...brief, constraints: brief.constraints ?? [] };
   }
 
-  private messages(task: string, input: StrategyInput, brief: unknown): Array<{ role: 'system' | 'user'; content: string }> {
+  private async loadCurrentCompetitorResearch(identityVersionId: string): Promise<unknown | null> {
+    const rows = await this.dataSource.query<Array<{ research_json: unknown }>>(
+      `SELECT jsonb_build_object(
+        'summary', competitor_researches.summary,
+        'searchQueries', competitor_researches.search_queries,
+        'limitations', competitor_researches.limitations,
+        'competitors', COALESCE((
+          SELECT jsonb_agg(
+            jsonb_build_object(
+              'name', brand_competitors.name,
+              'websiteUrl', brand_competitors.website_url,
+              'category', brand_competitors.category,
+              'positioning', brand_competitors.positioning,
+              'summary', brand_competitors.summary,
+              'strengths', brand_competitors.strengths,
+              'weaknesses', brand_competitors.weaknesses,
+              'differentiators', brand_competitors.differentiators,
+              'evidenceSummary', brand_competitors.evidence_summary,
+              'citations', COALESCE((
+                SELECT jsonb_agg(
+                  jsonb_build_object(
+                    'title', brand_competitor_citations.title,
+                    'url', brand_competitor_citations.url,
+                    'publisher', brand_competitor_citations.publisher,
+                    'snippet', brand_competitor_citations.snippet
+                  )
+                  ORDER BY brand_competitor_citations.sort_order, brand_competitor_citations.id
+                )
+                FROM brand_competitor_citations
+                WHERE brand_competitor_citations.brand_competitor_id = brand_competitors.id
+              ), '[]'::jsonb)
+            )
+            ORDER BY brand_competitors.sort_order, brand_competitors.id
+          )
+          FROM brand_competitors
+          WHERE brand_competitors.competitor_research_id = competitor_researches.id
+        ), '[]'::jsonb)
+      ) AS research_json
+      FROM competitor_researches
+      WHERE identity_version_id = $1 AND is_current AND status = 'READY'
+      ORDER BY revision DESC
+      LIMIT 1`,
+      [identityVersionId]
+    );
+
+    return rows[0]?.research_json ?? null;
+  }
+
+  private messages(
+    task: string,
+    input: StrategyInput,
+    brief: unknown,
+    competitorResearch: unknown | null
+  ): Array<{ role: 'system' | 'user'; content: string }> {
     return [
       {
         role: 'system',
         content: [
-          'You generate editable brand strategy as strict JSON from the saved confirmed brief only.',
-          'Do not invent competitors, market facts, legal claims, awards, or certifications.',
+          'You generate editable brand strategy as strict JSON from the saved confirmed brief.',
+          'If competitor research is provided, use it as strategic context with its stated citations and limitations.',
+          'Do not invent competitors, market facts, legal claims, awards, or certifications beyond the provided evidence.',
           'Label uncertainty in cautious language inside rules or proof points.',
           'Respect brief constraints and requested languages.',
           'Create distinct non-duplicate values, personas, messaging pillars, taglines, and rules.',
@@ -160,7 +215,8 @@ export class StrategyGenerator implements StageGenerator {
           mode: input.mode,
           section: input.section,
           userInstructions: input.userInstructions,
-          confirmedBrief: brief
+          confirmedBrief: brief,
+          competitorResearch
         })
       }
     ];

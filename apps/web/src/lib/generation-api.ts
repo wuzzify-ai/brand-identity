@@ -118,6 +118,39 @@ export function startStrategyGeneration(
   });
 }
 
+export function startCompetitorResearchGeneration(
+  accessToken: string,
+  input: {
+    workspaceId: string;
+    identityVersionId: string;
+    competitorNames?: string[];
+    market?: string;
+    maxCompetitors?: number;
+    userInstructions?: string;
+  }
+) {
+  return apiFetch<GenerationState>('/generations', {
+    method: 'POST',
+    headers: {
+      ...authHeaders(accessToken),
+      'Idempotency-Key': `competitor-research-${input.identityVersionId}-${createClientRequestId()}`
+    },
+    body: JSON.stringify({
+      workspaceId: input.workspaceId,
+      identityVersionId: input.identityVersionId,
+      workflowStageKey: 'STRATEGY',
+      task: 'COMPETITOR_RESEARCH',
+      tier: 'BALANCED',
+      input: {
+        competitorNames: input.competitorNames ?? [],
+        market: input.market ?? '',
+        maxCompetitors: input.maxCompetitors ?? 5,
+        userInstructions: input.userInstructions ?? ''
+      }
+    })
+  });
+}
+
 export function startVisualDirectionGeneration(
   accessToken: string,
   input: {

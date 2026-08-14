@@ -14,6 +14,12 @@ export class GenerationJobEntity {
   @Column({ name: 'identity_version_id', type: 'uuid' })
   identityVersionId!: string;
 
+  @Column({ name: 'brand_context_package_id', type: 'uuid', nullable: true })
+  brandContextPackageId!: string | null;
+
+  @Column({ name: 'brand_context_package_checksum_sha256', type: 'char', length: 64, nullable: true })
+  brandContextPackageChecksumSha256!: string | null;
+
   @Column({ name: 'workflow_stage_key', type: 'enum', enum: WorkflowStageKey, enumName: 'workflow_stage_key' })
   workflowStageKey!: WorkflowStageKey;
 

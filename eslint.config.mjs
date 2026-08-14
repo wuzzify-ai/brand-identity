@@ -18,6 +18,23 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        crypto: 'readonly',
+        fetch: 'readonly',
+        Headers: 'readonly',
+        process: 'readonly',
+        setTimeout: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly'
+      }
+    }
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       parserOptions: {

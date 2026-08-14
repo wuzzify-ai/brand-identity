@@ -49,6 +49,9 @@ describe('LogoConceptGenerator', () => {
     const result = await generator.generate({
       id: 'job-id',
       identityVersionId: 'version-id',
+      brandContextPackageId: null,
+      brandContextPackageChecksumSha256: null,
+      brandContextPackage: null,
       workflowStageKey: 'ASSETS',
       task: 'LOGO_CONCEPTS_GENERATE',
       tier: 'BALANCED',

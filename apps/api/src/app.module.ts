@@ -19,6 +19,7 @@ import { AssetsModule } from './assets/assets.module';
 import { LogoConceptsModule } from './logo-concepts/logo-concepts.module';
 import { DesignTokensModule } from './design-tokens/design-tokens.module';
 import { BrandBooksModule } from './brand-books/brand-books.module';
+import { BrandContextModule } from './brand-context/brand-context.module';
 import { ApprovalModule } from './approval/approval.module';
 import { AuditModule } from './audit/audit.module';
 import { ObservabilityModule } from './observability/observability.module';
@@ -56,6 +57,7 @@ import { ObservabilityModule } from './observability/observability.module';
     LogoConceptsModule,
     DesignTokensModule,
     BrandBooksModule,
+    BrandContextModule,
     ApprovalModule,
     AuditModule,
     ObservabilityModule,

@@ -8,6 +8,7 @@ export interface WorkerStructuredTextRequest {
   schemaName: string;
   userKey: string;
   messages: Array<{ role: 'system' | 'user'; content: string }>;
+  tools?: Array<Record<string, unknown>>;
 }
 
 export interface WorkerStructuredTextResult {
@@ -48,7 +49,8 @@ export class OpenRouterStructuredTextService {
           strict: true,
           schema: request.policy.output_schema
         }
-      }
+      },
+      ...(request.tools ? { tools: request.tools } : {})
     };
     const response = await fetch(`${this.config.get<string>('OPENROUTER_BASE_URL') ?? 'https://openrouter.ai/api/v1'}/chat/completions`, {
       method: 'POST',

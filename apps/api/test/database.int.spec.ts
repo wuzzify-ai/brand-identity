@@ -85,7 +85,7 @@ describeDbIntegration('database migrations', () => {
   it('connects to postgres and exposes the migrated brand identity schema', async () => {
     const migrationRows = await client.query<{ count: string }>('SELECT count(*)::text AS count FROM migrations');
 
-    expect(Number(migrationRows.rows[0]?.count)).toBeGreaterThanOrEqual(14);
+    expect(Number(migrationRows.rows[0]?.count)).toBeGreaterThanOrEqual(18);
 
     const tableRows = await client.query<{ table_name: string }>(
       `
@@ -104,6 +104,11 @@ describeDbIntegration('database migrations', () => {
           'logo_concepts',
           'design_token_sets',
           'brand_books',
+          'brand_context_packages',
+          'ai_employee_handoffs',
+          'competitor_researches',
+          'brand_competitors',
+          'brand_competitor_citations',
           'approval_decisions',
           'audit_logs',
           'outbox_events'
@@ -115,8 +120,13 @@ describeDbIntegration('database migrations', () => {
       'anonymous_upload_grants',
       'approval_decisions',
       'audit_logs',
+      'ai_employee_handoffs',
       'brand_assets',
       'brand_books',
+      'brand_competitor_citations',
+      'brand_competitors',
+      'brand_context_packages',
+      'competitor_researches',
       'design_token_sets',
       'identity_projects',
       'logo_concepts',

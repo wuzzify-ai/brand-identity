@@ -1,13 +1,15 @@
-import Link from 'next/link';
+import Link from "next/link";
+import { WuzzifyBrand } from "../../src/components/brand/wuzzify-brand";
 
-export default function PublicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function PublicLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="app-frame">
       <header className="topbar">
         <div className="topbar-inner">
           <Link href="/" className="topbar-title">
-            <span className="brand-mark">B</span>
-            <span>Brand Identity Creator</span>
+            <WuzzifyBrand product="Brand Identity Creator" />
           </Link>
           <nav className="topbar-nav" aria-label="Public navigation">
             <Link href="/register">Register</Link>

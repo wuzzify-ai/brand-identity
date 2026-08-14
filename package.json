@@ -20,7 +20,8 @@
     "infra:reset": "docker compose down -v",
     "db:migrate": "pnpm --filter @wuzzify/brand-identity-api migration:run",
     "db:revert": "pnpm --filter @wuzzify/brand-identity-api migration:revert",
-    "db:generate": "pnpm --filter @wuzzify/brand-identity-api migration:generate"
+    "db:generate": "pnpm --filter @wuzzify/brand-identity-api migration:generate",
+    "smoke:identity": "node scripts/smoke-identity-flow.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

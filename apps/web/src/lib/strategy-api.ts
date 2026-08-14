@@ -62,6 +62,51 @@ export type StrategyAggregate = {
   rules: StrategyTextItem[];
 };
 
+export type CompetitorCitation = {
+  id: string;
+  brand_competitor_id: string;
+  title: string;
+  url: string;
+  publisher: string | null;
+  snippet: string | null;
+  sort_order: number;
+};
+
+export type BrandCompetitor = {
+  id: string;
+  competitor_research_id: string;
+  name: string;
+  website_url: string | null;
+  category: string | null;
+  positioning: string | null;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  differentiators: string[];
+  evidence_summary: string | null;
+  sort_order: number;
+};
+
+export type CompetitorResearch = {
+  id: string;
+  identity_version_id: string;
+  generation_job_id: string | null;
+  revision: number;
+  status: 'READY' | 'FAILED' | 'ARCHIVED';
+  summary: string;
+  search_queries: string[];
+  limitations: string[];
+  is_current: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CompetitorResearchAggregate = {
+  research: CompetitorResearch | null;
+  competitors: BrandCompetitor[];
+  citations: CompetitorCitation[];
+};
+
 export type StrategyPayload = {
   lockVersion: number;
   positioning?: string;
@@ -103,6 +148,13 @@ export type StrategyPayload = {
 export function getStrategy(accessToken: string, workspaceId: string, projectId: string, versionId: string) {
   return apiFetch<StrategyAggregate>(
     `/workspaces/${workspaceId}/brand-identities/${projectId}/versions/${versionId}/strategy`,
+    { headers: authHeaders(accessToken) }
+  );
+}
+
+export function getCurrentCompetitorResearch(accessToken: string, workspaceId: string, projectId: string, versionId: string) {
+  return apiFetch<CompetitorResearchAggregate>(
+    `/workspaces/${workspaceId}/brand-identities/${projectId}/versions/${versionId}/strategy/competitor-research/current`,
     { headers: authHeaders(accessToken) }
   );
 }

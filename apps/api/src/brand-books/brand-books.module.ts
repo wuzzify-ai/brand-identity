@@ -10,6 +10,7 @@ import { BrandBooksService } from './brand-books.service';
 @Module({
   imports: [AuthModule, WorkspacesModule],
   controllers: [BrandBooksController, BrandBookObjectsController],
-  providers: [BrandBooksService, PrivateAssetStorage, AssetUrlSigner]
+  providers: [BrandBooksService, PrivateAssetStorage, AssetUrlSigner],
+  exports: [BrandBooksService]
 })
 export class BrandBooksModule {}

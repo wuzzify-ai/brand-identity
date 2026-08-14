@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, IsUUID, Length, Matches, Min } from 'class-validator';
+import { IsIn, IsInt, IsObject, IsOptional, IsString, IsUUID, Length, Matches, Min } from 'class-validator';
 
 export class CreateIdentityProjectDto {
   @IsString()
@@ -40,4 +40,38 @@ export class UpdateIdentityProjectDto {
 export class CloneIdentityVersionDto {
   @IsUUID()
   sourceVersionId!: string;
+}
+
+export class AutopilotRunEventDto {
+  @IsIn(['ACTION_STARTED', 'ACTION_SUCCEEDED', 'PAUSED', 'COMPLETED', 'FAILED', 'CANCELLED'])
+  eventType!: 'ACTION_STARTED' | 'ACTION_SUCCEEDED' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+
+  @IsOptional()
+  @IsString()
+  stageKey?: string;
+
+  @IsOptional()
+  @IsString()
+  actionCode?: string;
+
+  @IsString()
+  message!: string;
+
+  @IsOptional()
+  @IsUUID()
+  generationJobId?: string;
+
+  @IsOptional()
+  @IsObject()
+  metadata?: Record<string, unknown>;
+}
+
+export class FinishAutopilotRunDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @IsOptional()
+  @IsString()
+  errorMessage?: string;
 }

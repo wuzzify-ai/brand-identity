@@ -122,6 +122,7 @@ run_app "cd '${APP_DIR}' && pnpm install --frozen-lockfile"
 
 log "Building API, worker, and web"
 run_app "cd '${APP_DIR}' && set -a && source .env && set +a && pnpm build"
+[[ -s "${APP_DIR}/apps/web/.next/BUILD_ID" ]] || die "Web production build is missing (${APP_DIR}/apps/web/.next/BUILD_ID)."
 
 log "Running database migrations"
 run_app "cd '${APP_DIR}' && set -a && source .env && set +a && pnpm --filter @wuzzify/brand-identity-api migration:run"
@@ -153,7 +154,11 @@ module.exports = {
       cwd: '${APP_DIR}/apps/web',
       script: 'node_modules/next/dist/bin/next',
       args: 'start --port ${WEB_PORT}',
-      env: { NODE_ENV: 'production' },
+      env: {
+        NODE_ENV: 'production',
+        NEXT_PUBLIC_API_BASE_URL: 'https://${DOMAIN}/v1',
+        NEXT_PUBLIC_APP_URL: 'https://${DOMAIN}'
+      },
       max_memory_restart: '512M',
       time: true
     }

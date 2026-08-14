@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { BrandContextService } from '../brand-context/brand-context.service';
 import { AuditService } from '../audit/audit.service';
 import { DomainError } from '../common/domain-error';
 import { IdentityVersionStatus } from '../database/entities';
@@ -13,7 +14,10 @@ type VersionRow = {
 
 @Injectable()
 export class ApprovalService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly brandContext: BrandContextService
+  ) {}
 
   async history(workspaceId: string, projectId: string, versionId: string) {
     await this.assertVersionAccess(workspaceId, projectId, versionId);
@@ -70,6 +74,7 @@ export class ApprovalService {
         [versionId]
       );
       await manager.query(`UPDATE identity_projects SET active_version_id = $1, updated_at = now() WHERE id = $2`, [versionId, projectId]);
+      const contextPackage = await this.brandContext.publishForActivation(manager, workspaceId, projectId, versionId, userId);
       await this.insertDecision(manager, versionId, userId, 'ACTIVATED', version.status, IdentityVersionStatus.Active, dto);
       await this.insertAudit(manager, {
         workspaceId,
@@ -80,7 +85,11 @@ export class ApprovalService {
         resourceType: 'identity_version',
         resourceId: versionId,
         before: { status: version.status },
-        after: { status: IdentityVersionStatus.Active }
+        after: {
+          status: IdentityVersionStatus.Active,
+          activeContextPackageId: contextPackage.packageId,
+          activeContextPackageChecksumSha256: contextPackage.checksum
+        }
       });
       await manager.query(
         `INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, schema_version, payload, idempotency_key)
@@ -88,11 +97,23 @@ export class ApprovalService {
          ON CONFLICT (idempotency_key) DO NOTHING`,
         [
           versionId,
-          JSON.stringify({ workspaceId, projectId, versionId, activatedByUserId: userId }),
+          JSON.stringify({
+            workspaceId,
+            projectId,
+            versionId,
+            activatedByUserId: userId,
+            brandContextPackageId: contextPackage.packageId,
+            brandContextPackageChecksumSha256: contextPackage.checksum
+          }),
           `identity.version.activated:${versionId}`
         ]
       );
-      return { ok: true, activeVersionId: versionId };
+      return {
+        ok: true,
+        activeVersionId: versionId,
+        activeContextPackageId: contextPackage.packageId,
+        activeContextPackageChecksumSha256: contextPackage.checksum
+      };
     });
   }
 
