@@ -32,6 +32,12 @@ sudo DOMAIN=app.example.com \
   bash deploy/deploy.sh
 ```
 
+If you paste the command into a shell, keep the trailing `\` as the final character on each continued line. A safer one-line version is:
+
+```bash
+sudo DOMAIN=app.example.com OPENROUTER_API_KEY='your-openrouter-key' SMTP_URL='smtps://user:password@smtp.example.com:465' EMAIL_FROM='noreply@app.example.com' bash deploy/deploy.sh
+```
+
 For HTTPS on the first deployment, point DNS at the VPS first, then run:
 
 ```bash
@@ -44,6 +50,7 @@ sudo DOMAIN=app.example.com \
 ```
 
 The deploy script syncs the checkout to `/srv/brand-identity`, installs dependencies with the lockfile, builds all workspaces, runs TypeORM migrations, starts API/worker/web with PM2, installs Nginx routing, and checks both API and web health.
+On repeat runs, deploy-controlled values such as domain URLs, ports, OpenRouter settings, SMTP settings, and database URL are synchronized into the existing `.env` while long-lived secrets are preserved. If an older deployment wrote JWT PEM keys in an invalid multi-line shell format, the deploy script repairs those key values automatically.
 
 ## Updating an existing deployment
 

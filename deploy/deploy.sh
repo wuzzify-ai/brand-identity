@@ -20,6 +20,106 @@ OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
 log() { printf '\n[%s] %s\n' "$(date '+%F %T')" "$*"; }
 die() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
 run_app() { runuser -u "${APP_USER}" -- env HOME="/home/${APP_USER}" PM2_HOME="/home/${APP_USER}/.pm2" bash -lc "$*"; }
+env_quote() {
+  printf "'"
+  printf "%s" "$1" | sed "s/'/'\\\\''/g"
+  printf "'"
+}
+set_env_value() {
+  local key="$1"
+  local value="$2"
+  local tmp_file
+  tmp_file="$(mktemp)"
+  ENV_KEY="${key}" ENV_VALUE="${value}" python3 - "${ENV_FILE}" "${tmp_file}" <<'PY'
+import os
+import re
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+key = os.environ["ENV_KEY"]
+value = os.environ["ENV_VALUE"]
+assignment_pattern = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+def quote_env(raw: str) -> str:
+    return "'" + raw.replace("'", "'\\''") + "'"
+
+replacement = f"{key}={quote_env(value)}"
+lines = source.read_text().splitlines()
+output: list[str] = []
+found = False
+skip_continuation = False
+
+for line in lines:
+    if assignment_pattern.match(line):
+        skip_continuation = False
+
+    if line.startswith(f"{key}="):
+        if not found:
+            output.append(replacement)
+            found = True
+        skip_continuation = True
+        continue
+
+    if skip_continuation:
+        continue
+
+    output.append(line)
+
+if not found:
+    output.append(replacement)
+
+target.write_text("\n".join(output) + "\n")
+PY
+  install -o "${APP_USER}" -g "${APP_USER}" -m 0600 "${tmp_file}" "${ENV_FILE}"
+  rm -f "${tmp_file}"
+}
+generate_jwt_pem_values() {
+  KEY_DIR="$(mktemp -d)"
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "${KEY_DIR}/access-private.pem" 2>/dev/null
+  openssl pkey -in "${KEY_DIR}/access-private.pem" -pubout -out "${KEY_DIR}/access-public.pem" 2>/dev/null
+  PRIVATE_KEY="$(awk '{printf "%s\\n", $0}' "${KEY_DIR}/access-private.pem")"
+  PUBLIC_KEY="$(awk '{printf "%s\\n", $0}' "${KEY_DIR}/access-public.pem")"
+  rm -rf "${KEY_DIR}"
+}
+repair_or_create_jwt_pem_keys() {
+  if grep -Eq "^JWT_ACCESS_PRIVATE_KEY=['\"]-----BEGIN PRIVATE KEY-----\\\\n" "${ENV_FILE}" \
+    && grep -Eq "^JWT_ACCESS_PUBLIC_KEY=['\"]-----BEGIN PUBLIC KEY-----\\\\n" "${ENV_FILE}"; then
+    return
+  fi
+
+  log "Repairing JWT PEM key env values"
+  local PRIVATE_KEY
+  local PUBLIC_KEY
+  generate_jwt_pem_values
+  set_env_value "JWT_ACCESS_PRIVATE_KEY" "${PRIVATE_KEY}"
+  set_env_value "JWT_ACCESS_PUBLIC_KEY" "${PUBLIC_KEY}"
+}
+sync_runtime_env_values() {
+  log "Synchronizing deploy-controlled environment values"
+  set_env_value "NODE_ENV" "production"
+  set_env_value "WEB_PORT" "${WEB_PORT}"
+  set_env_value "NEXT_PUBLIC_API_BASE_URL" "https://${DOMAIN}/v1"
+  set_env_value "NEXT_PUBLIC_APP_URL" "https://${DOMAIN}"
+  set_env_value "API_PORT" "${API_PORT}"
+  set_env_value "API_PUBLIC_URL" "https://${DOMAIN}"
+  set_env_value "WEB_ORIGIN" "https://${DOMAIN}"
+  set_env_value "WORKER_CONCURRENCY" "${WORKER_CONCURRENCY:-2}"
+  set_env_value "DATABASE_URL" "${DATABASE_URL}"
+  set_env_value "REDIS_URL" "redis://127.0.0.1:6379/0"
+  set_env_value "OPENROUTER_BASE_URL" "${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}"
+  set_env_value "OPENROUTER_API_KEY" "${OPENROUTER_API_KEY}"
+  set_env_value "OPENROUTER_BRIEF_MODEL" "${OPENROUTER_BRIEF_MODEL:-anthropic/claude-sonnet-4}"
+  set_env_value "OPENROUTER_STRATEGY_MODEL" "${OPENROUTER_STRATEGY_MODEL:-openai/gpt-4.1}"
+  set_env_value "OPENROUTER_VISUAL_MODEL" "${OPENROUTER_VISUAL_MODEL:-anthropic/claude-sonnet-4}"
+  set_env_value "OPENROUTER_ASSET_MODEL" "${OPENROUTER_ASSET_MODEL:-openai/gpt-image-2}"
+  set_env_value "AI_WORKSPACE_MONTHLY_BUDGET_MICRO_USD" "${AI_WORKSPACE_MONTHLY_BUDGET_MICRO_USD:-100000000}"
+  set_env_value "AI_GENERATION_PRECHARGE_MICRO_USD" "${AI_GENERATION_PRECHARGE_MICRO_USD:-1000000}"
+  set_env_value "PUBLIC_ASSET_CDN_URL" "https://${DOMAIN}"
+  set_env_value "EMAIL_FROM" "${EMAIL_FROM}"
+  set_env_value "SMTP_URL" "${SMTP_URL}"
+}
 
 [[ "${EUID}" -eq 0 ]] || die "Run as root (sudo bash deploy/deploy.sh)."
 [[ -n "${DOMAIN}" ]] || die "Set DOMAIN, for example DOMAIN=app.example.com."
@@ -29,6 +129,7 @@ run_app() { runuser -u "${APP_USER}" -- env HOME="/home/${APP_USER}" PM2_HOME="/
 [[ -n "${OPENROUTER_API_KEY}" ]] || die "Set OPENROUTER_API_KEY before deploying."
 [[ -n "${SMTP_URL}" ]] || die "Set SMTP_URL to a real SMTP provider before deploying."
 [[ -d "${SOURCE_DIR}" && -f "${SOURCE_DIR}/pnpm-lock.yaml" ]] || die "SOURCE_DIR must point to the project checkout."
+command -v python3 >/dev/null || die "python3 is required for safe .env updates. Run setup-vps.sh first."
 id -u "${APP_USER}" >/dev/null 2>&1 || die "Application user ${APP_USER} does not exist. Run setup-vps.sh first."
 [[ -f "/etc/${APP_NAME}/db.env" ]] || die "Missing /etc/${APP_NAME}/db.env. Run setup-vps.sh first."
 source "/etc/${APP_NAME}/db.env"
@@ -52,70 +153,68 @@ chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}"
 ENV_FILE="${APP_DIR}/.env"
 if [[ ! -f "${ENV_FILE}" ]]; then
   log "Generating production environment file"
-  KEY_DIR="$(mktemp -d)"
-  trap 'rm -rf "${KEY_DIR}"' EXIT
-  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "${KEY_DIR}/access-private.pem" 2>/dev/null
-  openssl pkey -in "${KEY_DIR}/access-private.pem" -pubout -out "${KEY_DIR}/access-public.pem" 2>/dev/null
-  PRIVATE_KEY="$(awk '{printf "%s\\n", $0}' "${KEY_DIR}/access-private.pem")"
-  PUBLIC_KEY="$(awk '{printf "%s\\n", $0}' "${KEY_DIR}/access-public.pem")"
+  generate_jwt_pem_values
   S3_SECRET="$(openssl rand -hex 32)"
   cat > "${ENV_FILE}" <<EOF
-NODE_ENV=production
-WEB_PORT=${WEB_PORT}
-NEXT_PUBLIC_API_BASE_URL=https://${DOMAIN}/v1
-NEXT_PUBLIC_APP_URL=https://${DOMAIN}
-API_PORT=${API_PORT}
-API_PUBLIC_URL=https://${DOMAIN}
-WEB_ORIGIN=https://${DOMAIN}
-WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-2}
+NODE_ENV=$(env_quote "production")
+WEB_PORT=$(env_quote "${WEB_PORT}")
+NEXT_PUBLIC_API_BASE_URL=$(env_quote "https://${DOMAIN}/v1")
+NEXT_PUBLIC_APP_URL=$(env_quote "https://${DOMAIN}")
+API_PORT=$(env_quote "${API_PORT}")
+API_PUBLIC_URL=$(env_quote "https://${DOMAIN}")
+WEB_ORIGIN=$(env_quote "https://${DOMAIN}")
+WORKER_CONCURRENCY=$(env_quote "${WORKER_CONCURRENCY:-2}")
 
-DATABASE_URL=${DATABASE_URL}
-REDIS_URL=redis://127.0.0.1:6379/0
+DATABASE_URL=$(env_quote "${DATABASE_URL}")
+REDIS_URL=$(env_quote "redis://127.0.0.1:6379/0")
 
-OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
-OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-OPENROUTER_BRIEF_MODEL=${OPENROUTER_BRIEF_MODEL:-anthropic/claude-sonnet-4}
-OPENROUTER_STRATEGY_MODEL=${OPENROUTER_STRATEGY_MODEL:-openai/gpt-4.1}
-OPENROUTER_VISUAL_MODEL=${OPENROUTER_VISUAL_MODEL:-anthropic/claude-sonnet-4}
-OPENROUTER_ASSET_MODEL=${OPENROUTER_ASSET_MODEL:-openai/gpt-image-2}
-AI_WORKSPACE_MONTHLY_BUDGET_MICRO_USD=${AI_WORKSPACE_MONTHLY_BUDGET_MICRO_USD:-100000000}
-AI_GENERATION_PRECHARGE_MICRO_USD=${AI_GENERATION_PRECHARGE_MICRO_USD:-1000000}
+OPENROUTER_BASE_URL=$(env_quote "${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}")
+OPENROUTER_API_KEY=$(env_quote "${OPENROUTER_API_KEY}")
+OPENROUTER_BRIEF_MODEL=$(env_quote "${OPENROUTER_BRIEF_MODEL:-anthropic/claude-sonnet-4}")
+OPENROUTER_STRATEGY_MODEL=$(env_quote "${OPENROUTER_STRATEGY_MODEL:-openai/gpt-4.1}")
+OPENROUTER_VISUAL_MODEL=$(env_quote "${OPENROUTER_VISUAL_MODEL:-anthropic/claude-sonnet-4}")
+OPENROUTER_ASSET_MODEL=$(env_quote "${OPENROUTER_ASSET_MODEL:-openai/gpt-image-2}")
+AI_WORKSPACE_MONTHLY_BUDGET_MICRO_USD=$(env_quote "${AI_WORKSPACE_MONTHLY_BUDGET_MICRO_USD:-100000000}")
+AI_GENERATION_PRECHARGE_MICRO_USD=$(env_quote "${AI_GENERATION_PRECHARGE_MICRO_USD:-1000000}")
 
 # The application uses its private local object store when no S3/MinIO is present.
-S3_ENDPOINT=file://${APP_DIR}/.local-object-storage
-S3_REGION=us-east-1
-S3_BUCKET=brand-identity-assets
-S3_ACCESS_KEY_ID=local-storage
-S3_SECRET_ACCESS_KEY=${S3_SECRET}
-PUBLIC_ASSET_CDN_URL=https://${DOMAIN}
-AUTHENTICATED_UPLOAD_MAX_BYTES=26214400
-ASSET_UPLOAD_GRANT_TTL_SECONDS=900
-ASSET_DOWNLOAD_GRANT_TTL_SECONDS=300
-ANONYMOUS_UPLOAD_MAX_BYTES=10485760
-ANONYMOUS_UPLOAD_GRANT_TTL_SECONDS=900
+S3_ENDPOINT=$(env_quote "file://${APP_DIR}/.local-object-storage")
+S3_REGION=$(env_quote "us-east-1")
+S3_BUCKET=$(env_quote "brand-identity-assets")
+S3_ACCESS_KEY_ID=$(env_quote "local-storage")
+S3_SECRET_ACCESS_KEY=$(env_quote "${S3_SECRET}")
+PUBLIC_ASSET_CDN_URL=$(env_quote "https://${DOMAIN}")
+AUTHENTICATED_UPLOAD_MAX_BYTES=$(env_quote "26214400")
+ASSET_UPLOAD_GRANT_TTL_SECONDS=$(env_quote "900")
+ASSET_DOWNLOAD_GRANT_TTL_SECONDS=$(env_quote "300")
+ANONYMOUS_UPLOAD_MAX_BYTES=$(env_quote "10485760")
+ANONYMOUS_UPLOAD_GRANT_TTL_SECONDS=$(env_quote "900")
 
-JWT_ACCESS_SECRET=$(openssl rand -hex 32)
-JWT_REFRESH_SECRET=$(openssl rand -hex 32)
-JWT_ISSUER=brand-identity-api
-JWT_AUDIENCE=brand-identity-web
-JWT_ACCESS_PRIVATE_KEY=${PRIVATE_KEY}
-JWT_ACCESS_PUBLIC_KEY=${PUBLIC_KEY}
-JWT_ACCESS_TTL_SECONDS=900
-REFRESH_TOKEN_TTL_DAYS=30
-ACCESS_TOKEN_TTL_SECONDS=900
-REFRESH_TOKEN_TTL_SECONDS=2592000
+JWT_ACCESS_SECRET=$(env_quote "$(openssl rand -hex 32)")
+JWT_REFRESH_SECRET=$(env_quote "$(openssl rand -hex 32)")
+JWT_ISSUER=$(env_quote "brand-identity-api")
+JWT_AUDIENCE=$(env_quote "brand-identity-web")
+JWT_ACCESS_PRIVATE_KEY=$(env_quote "${PRIVATE_KEY}")
+JWT_ACCESS_PUBLIC_KEY=$(env_quote "${PUBLIC_KEY}")
+JWT_ACCESS_TTL_SECONDS=$(env_quote "900")
+REFRESH_TOKEN_TTL_DAYS=$(env_quote "30")
+ACCESS_TOKEN_TTL_SECONDS=$(env_quote "900")
+REFRESH_TOKEN_TTL_SECONDS=$(env_quote "2592000")
 
-EMAIL_FROM=${EMAIL_FROM}
-SMTP_URL=${SMTP_URL}
-TOKEN_HASH_PEPPER=$(openssl rand -hex 32)
-EMAIL_VERIFICATION_TTL_HOURS=24
-PASSWORD_RESET_TTL_MINUTES=30
+EMAIL_FROM=$(env_quote "${EMAIL_FROM}")
+SMTP_URL=$(env_quote "${SMTP_URL}")
+TOKEN_HASH_PEPPER=$(env_quote "$(openssl rand -hex 32)")
+EMAIL_VERIFICATION_TTL_HOURS=$(env_quote "24")
+PASSWORD_RESET_TTL_MINUTES=$(env_quote "30")
 EOF
   chown "${APP_USER}:${APP_USER}" "${ENV_FILE}"
   chmod 0600 "${ENV_FILE}"
 else
-  log "Keeping existing ${ENV_FILE} (secrets are not overwritten)"
+  log "Keeping existing ${ENV_FILE} secrets"
 fi
+sync_runtime_env_values
+repair_or_create_jwt_pem_keys
+run_app "cd '${APP_DIR}' && set -a && source .env && set +a && node -e \"for (const key of ['NEXT_PUBLIC_API_BASE_URL','NEXT_PUBLIC_APP_URL','DATABASE_URL','JWT_ACCESS_PRIVATE_KEY','JWT_ACCESS_PUBLIC_KEY']) if (!process.env[key]) throw new Error(key + ' missing'); console.log('Environment loaded successfully')\""
 
 log "Installing dependencies"
 run_app "cd '${APP_DIR}' && pnpm install --frozen-lockfile"

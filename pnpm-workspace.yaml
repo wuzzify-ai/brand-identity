@@ -8,7 +8,7 @@ allowBuilds:
   "argon2": true
   "cpu-features": true
   "esbuild": true
-  msgpackr-extract: set this to true or false
+  msgpackr-extract: true
   "protobufjs": true
   "sharp": true
   "ssh2": true
