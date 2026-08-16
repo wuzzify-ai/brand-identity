@@ -39,4 +39,27 @@ describe('normalizeGeneratedBrief', () => {
       })
     ).toThrow();
   });
+
+  it('adds a safe market fallback when AI output leaves markets empty', () => {
+    expect(
+      normalizeGeneratedBrief(
+        {
+          industry: 'Automation software',
+          languages: ['en'],
+          audience: ['Small business owners'],
+          market: [],
+          productsServices: ['Workflow automation'],
+          positioning: 'Simple automation for growing small businesses.',
+          preferences: ['Clean', 'Reliable'],
+          constraints: [],
+          assumptions: [],
+          confidenceWarnings: []
+        },
+        { marketFallback: 'Small-business automation market' }
+      )
+    ).toMatchObject({
+      market: ['Small-business automation market'],
+      assumptions: ['Market inferred as "Small-business automation market" because the brief requires a market.']
+    });
+  });
 });

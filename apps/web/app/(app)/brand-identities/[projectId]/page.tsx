@@ -75,6 +75,7 @@ function ProjectWorkspaceContent() {
   const searchParams = useSearchParams();
   const workspaceId = searchParams.get("workspaceId");
   const requestedStage = searchParams.get("step");
+  const autoBuildBrief = searchParams.get("autoBuild") === "brief";
   const [projectName, setProjectName] = useState<string | null>(null);
   const [initialBusinessDescription, setInitialBusinessDescription] = useState<
     string | null
@@ -117,7 +118,7 @@ function ProjectWorkspaceContent() {
     stageKey: WorkflowStageKey,
     knownStages: WorkflowStageSummary[] | null = stages,
   ) {
-    if (!isStageAvailable(knownStages, stageKey)) return;
+    if (stageKey !== "BRIEF" && !isStageAvailable(knownStages, stageKey)) return;
     setActiveStage(stageKey);
     if (requestedStage !== stageKey) replaceStageInUrl(stageKey);
   }
@@ -127,7 +128,7 @@ function ProjectWorkspaceContent() {
 
     const resolvedStage =
       isWorkflowStageKey(requestedStage) &&
-      isStageAvailable(stages, requestedStage)
+      (requestedStage === "BRIEF" || isStageAvailable(stages, requestedStage))
         ? requestedStage
         : getRecommendedStage(stages);
 
@@ -297,6 +298,7 @@ function ProjectWorkspaceContent() {
                 projectId={params.projectId}
                 versionId={versionId as string}
                 initialBusinessDescription={initialBusinessDescription}
+                autoBuild={autoBuildBrief}
                 onCompleted={() => void refreshWorkflow("BRIEF")}
               />
             ) : null}

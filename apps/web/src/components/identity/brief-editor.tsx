@@ -67,6 +67,7 @@ type BriefEditorProps = {
   projectId: string;
   versionId: string;
   initialBusinessDescription?: string | null;
+  autoBuild?: boolean;
   onCompleted?: () => void;
 };
 
@@ -76,12 +77,14 @@ export function BriefEditor({
   projectId,
   versionId,
   initialBusinessDescription,
+  autoBuild = false,
   onCompleted
 }: BriefEditorProps) {
   const [brief, setBrief] = useState<BriefAggregate | null>(null);
   const [status, setStatus] = useState<string>('Loading brief…');
   const [conflict, setConflict] = useState(false);
   const [aiStatus, setAiStatus] = useState<string | null>(null);
+  const [autoBuildStarted, setAutoBuildStarted] = useState(false);
   const form = useForm<BriefFormValues>({
     resolver: zodResolver(briefFormSchema),
     defaultValues: emptyValues()
@@ -93,11 +96,29 @@ export function BriefEditor({
     void reload();
   }, [accessToken, workspaceId, projectId, versionId]);
 
-  async function reload() {
+  useEffect(() => {
+    if (!autoBuild || autoBuildStarted || !brief) return;
+
+    const businessDescription = form.getValues('businessDescription')?.trim();
+    if (!businessDescription) return;
+
+    setAutoBuildStarted(true);
+    void runAi('full');
+  }, [autoBuild, autoBuildStarted, brief, form]);
+
+  async function reload(businessDescriptionOverride?: string | null) {
     try {
       const next = await getBrief(accessToken, workspaceId, projectId, versionId);
       setBrief(next);
-      form.reset(toFormValues(next, initialBusinessDescription));
+      form.reset(
+        toFormValues(
+          next,
+          preferredBusinessDescription(
+            businessDescriptionOverride ?? form.getValues('businessDescription'),
+            initialBusinessDescription
+          )
+        )
+      );
       setStatus('Brief loaded.');
       setConflict(false);
     } catch (caught) {
@@ -144,7 +165,7 @@ export function BriefEditor({
       await waitForGeneration(accessToken, generation.job.id, (state) => {
         setAiStatus(state.job.progress_message ?? `AI generation is ${state.job.status.toLowerCase()}.`);
       });
-      await reload();
+      await reload(businessDescription);
       setAiStatus('AI suggestions were applied to the brief.');
     } catch (caught) {
       setAiStatus(normalizeApiError(caught).message);
@@ -205,8 +226,10 @@ export function BriefEditor({
         <aside className="panel panel-pad" aria-live="polite">
           <h3 style={{ marginTop: 0 }}>Completion checklist</h3>
           {completionReasons.length ? (
-            <ul>
-              {completionReasons.map((reason) => <li key={reason}>{reason}</li>)}
+            <ul className="brief-completion-checklist">
+              {completionReasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
             </ul>
           ) : (
             <p className="section-copy">All required brief fields are present.</p>
@@ -375,6 +398,12 @@ function toFormValues(aggregate: BriefAggregate, businessDescription?: string | 
     preferences: aggregate.preferences.map((item) => ({ id: item.id, text: item.text, origin: item.origin })),
     constraints: aggregate.constraints.map((item) => ({ id: item.id, text: item.text, origin: item.origin }))
   };
+}
+
+function preferredBusinessDescription(current?: string | null, fallback?: string | null): string {
+  const currentText = current?.trim();
+  if (currentText) return currentText;
+  return fallback?.trim() ?? '';
 }
 
 function toPayload(values: BriefFormValues, selectedFields?: string[]): BriefFormPayload {

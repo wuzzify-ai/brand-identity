@@ -38,6 +38,8 @@ export function isStageAvailable(
   stages: WorkflowStageSummary[] | null,
   stageKey: WorkflowStageKey,
 ): boolean {
+  if (stageKey === "BRIEF") return true;
+
   return (
     stages?.some(
       (stage) => stage.stage_key === stageKey && stage.status !== "LOCKED",

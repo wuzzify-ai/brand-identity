@@ -5,7 +5,7 @@ $runtimeNode = 'C:\Users\Ahmed Mohamed\.cache\codex-runtimes\codex-primary-runti
 $runtimeBin = 'C:\Users\Ahmed Mohamed\.cache\codex-runtimes\codex-primary-runtime\dependencies\bin\fallback'
 $env:Path = "$runtimeNode;$runtimeBin;$env:Path"
 
-$env:DATABASE_URL = 'postgres://brand_identity:brand_identity_dev@127.0.0.1:55434/brand_identity_v3'
+$env:DATABASE_URL = 'postgres://brand_identity:brand_identity_dev@127.0.0.1:15432/brand_identity_v3'
 $env:REDIS_URL = 'redis://127.0.0.1:56379'
 $env:API_PORT = '4100'
 $env:API_PUBLIC_URL = 'http://localhost:4100/v1'

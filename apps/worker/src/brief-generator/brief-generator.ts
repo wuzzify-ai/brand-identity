@@ -64,7 +64,9 @@ export class BriefGenerator implements StageGenerator {
       userKey: job.id,
       messages: this.messages(job.task, input)
     });
-    const normalized = normalizeGeneratedBrief(response.data);
+    const normalized = normalizeGeneratedBrief(response.data, {
+      marketFallback: inferMarketFallback(input)
+    });
 
     const result: StageGenerationResult = {
       artifactName: job.task === 'BRIEF_IMPROVE' ? 'Improved brief' : 'Extracted brief',
@@ -97,6 +99,7 @@ export class BriefGenerator implements StageGenerator {
           'You extract editable brand-identity brief data as strict JSON.',
           'Leave unknown facts as empty strings or empty arrays.',
           'Never invent competitors, legal claims, certifications, countries, or business facts.',
+          'The market field is required for workflow completion. If no exact geography is supplied, provide one non-empty target market segment such as "Primary target market" or an inferred market category, and explain the inference in assumptions.',
           'Use BCP-47-like language tags such as en, ar, en-US, ar-EG.',
           'Include locale and RTL needs when Arabic or another RTL language is present.',
           'Put uncertain inferences in assumptions or confidenceWarnings.'
@@ -188,6 +191,29 @@ export class BriefGenerator implements StageGenerator {
       return (counts[field] ?? 0) === 0;
     };
   }
+}
+
+function inferMarketFallback(input: BriefInput): string {
+  const description = input.businessDescription.toLowerCase();
+  const locale = input.locale.toLowerCase();
+
+  if (description.includes('egypt') || description.includes('cairo') || locale === 'ar-eg') {
+    return 'Egypt';
+  }
+  if (description.includes('saudi') || description.includes('riyadh') || locale === 'ar-sa') {
+    return 'Saudi Arabia';
+  }
+  if (description.includes('uae') || description.includes('dubai') || locale === 'ar-ae') {
+    return 'United Arab Emirates';
+  }
+  if (description.includes('united states') || /\busa\b/.test(description) || locale === 'en-us') {
+    return 'United States';
+  }
+  if (description.includes('united kingdom') || /\buk\b/.test(description) || locale === 'en-gb') {
+    return 'United Kingdom';
+  }
+
+  return 'Primary target market';
 }
 
 async function ensureBrief(manager: Pick<DataSource['manager'], 'query'>, identityVersionId: string): Promise<{ id: string }> {

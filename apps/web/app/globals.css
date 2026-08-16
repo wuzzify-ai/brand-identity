@@ -347,6 +347,23 @@ textarea {
   font-weight: 700;
 }
 
+.brief-completion-checklist {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: var(--color-coral);
+  font-weight: 700;
+}
+
+.brief-completion-checklist li {
+  padding-left: 2px;
+}
+
+.brief-completion-checklist li::marker {
+  color: var(--color-coral);
+}
+
 @media (max-width: 780px) {
   .topbar-inner,
   .workspace {

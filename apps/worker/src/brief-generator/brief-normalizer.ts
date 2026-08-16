@@ -28,19 +28,30 @@ export interface NormalizedGeneratedBrief {
   confidenceWarnings: string[];
 }
 
-export function normalizeGeneratedBrief(value: unknown): NormalizedGeneratedBrief {
+export interface NormalizeGeneratedBriefOptions {
+  marketFallback?: string;
+}
+
+export function normalizeGeneratedBrief(
+  value: unknown,
+  options: NormalizeGeneratedBriefOptions = {}
+): NormalizedGeneratedBrief {
   const parsed = generatedBriefSchema.parse(value);
+  const normalizedMarket = normalizeUniqueList(parsed.market, 'market', 25, 180);
+  const market = normalizedMarket.length > 0 ? normalizedMarket : normalizeMarketFallback(options.marketFallback);
+  const inferredMarketAssumption =
+    normalizedMarket.length === 0 && market.length > 0 ? [`Market inferred as "${market[0]}" because the brief requires a market.`] : [];
 
   return {
     industry: trimBounded(parsed.industry, 180),
     positioning: trimBounded(parsed.positioning, 1000),
     languages: normalizeLanguageTags(parsed.languages),
     audience: normalizeUniqueList(parsed.audience, 'audience', 25, 180),
-    market: normalizeUniqueList(parsed.market, 'market', 25, 180),
+    market,
     productsServices: normalizeUniqueList(parsed.productsServices, 'products/services', 40, 180),
     preferences: normalizeUniqueList(parsed.preferences, 'preferences', 40, 500),
     constraints: normalizeUniqueList(parsed.constraints, 'constraints', 40, 500),
-    assumptions: normalizeUniqueList(parsed.assumptions, 'assumptions', 40, 500),
+    assumptions: normalizeUniqueList([...parsed.assumptions, ...inferredMarketAssumption], 'assumptions', 40, 500),
     confidenceWarnings: normalizeUniqueList(parsed.confidenceWarnings, 'confidence warnings', 40, 500)
   };
 }
@@ -83,6 +94,12 @@ function normalizeUniqueList(values: string[], label: string, maxCount: number, 
   }
 
   return normalized;
+}
+
+function normalizeMarketFallback(value?: string): string[] {
+  const fallback = trimBounded(value ?? 'Primary target market', 180);
+
+  return fallback ? [fallback] : ['Primary target market'];
 }
 
 function trimBounded(value: string, maxLength: number): string {

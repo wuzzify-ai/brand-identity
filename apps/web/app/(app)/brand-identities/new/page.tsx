@@ -13,7 +13,8 @@ import { useAuth } from '../../../../src/providers/auth-provider';
 const schema = z.object({
   name: z.string().min(1).max(180),
   slug: z.string().optional(),
-  initialDescription: z.string().optional()
+  initialDescription: z.string().optional(),
+  intent: z.enum(['ai', 'manual']).default('manual')
 });
 
 export default function NewBrandIdentityPage() {
@@ -64,7 +65,13 @@ export default function NewBrandIdentityPage() {
       }
 
       const response = await createIdentityProject(auth.accessToken, workspaceId, input);
-      router.push(`/brand-identities/${response.project.id}?workspaceId=${workspaceId}`);
+      const nextParams = new URLSearchParams({ workspaceId, step: 'BRIEF' });
+
+      if (parsed.data.intent === 'ai') {
+        nextParams.set('autoBuild', 'brief');
+      }
+
+      router.push(`/brand-identities/${response.project.id}?${nextParams.toString()}`);
     } catch (caught) {
       setMessage(normalizeApiError(caught).message);
     }
@@ -85,8 +92,8 @@ export default function NewBrandIdentityPage() {
             onChange={(event) => setInitialDescription(event.target.value)}
           />
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <Button type="submit">Build my brief</Button>
-            <Button type="submit" variant="secondary">Start manually</Button>
+            <Button type="submit" name="intent" value="ai">Build my brief</Button>
+            <Button type="submit" name="intent" value="manual" variant="secondary">Start manually</Button>
           </div>
           {message ? <p role="status" className="section-copy">{message}</p> : null}
         </form>

@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: brand_identity
       POSTGRES_PASSWORD: brand_identity_dev
     ports:
-      - "55432:5432"
+      - "15432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
