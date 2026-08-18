@@ -17,6 +17,7 @@ SMTP_URL="${SMTP_URL:-}"
 EMAIL_FROM="${EMAIL_FROM:-}"
 OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
 WEB_ORIGINS="${WEB_ORIGINS:-https://${DOMAIN},http://${DOMAIN}}"
+CORS_ALLOW_ALL="${CORS_ALLOW_ALL:-false}"
 
 log() { printf '\n[%s] %s\n' "$(date '+%F %T')" "$*"; }
 die() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
@@ -106,6 +107,7 @@ sync_runtime_env_values() {
   set_env_value "API_PORT" "${API_PORT}"
   set_env_value "API_PUBLIC_URL" "https://${DOMAIN}"
   set_env_value "WEB_ORIGIN" "${WEB_ORIGINS}"
+  set_env_value "CORS_ALLOW_ALL" "${CORS_ALLOW_ALL}"
   set_env_value "WORKER_CONCURRENCY" "${WORKER_CONCURRENCY:-2}"
   set_env_value "DATABASE_URL" "${DATABASE_URL}"
   set_env_value "REDIS_URL" "redis://127.0.0.1:6379/0"
@@ -164,6 +166,7 @@ NEXT_PUBLIC_APP_URL=$(env_quote "https://${DOMAIN}")
 API_PORT=$(env_quote "${API_PORT}")
 API_PUBLIC_URL=$(env_quote "https://${DOMAIN}")
 WEB_ORIGIN=$(env_quote "${WEB_ORIGINS}")
+CORS_ALLOW_ALL=$(env_quote "${CORS_ALLOW_ALL}")
 WORKER_CONCURRENCY=$(env_quote "${WORKER_CONCURRENCY:-2}")
 
 DATABASE_URL=$(env_quote "${DATABASE_URL}")

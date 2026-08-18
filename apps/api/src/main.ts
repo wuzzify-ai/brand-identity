@@ -11,7 +11,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix('v1');
   app.enableCors({
-    origin: '*',
+    origin: resolveCorsOrigin(),
+    credentials: true
   });
   app.enableShutdownHooks();
   app.useGlobalPipes(
@@ -42,3 +43,11 @@ async function bootstrap() {
 }
 
 void bootstrap();
+
+function resolveCorsOrigin() {
+  if (process.env.CORS_ALLOW_ALL === 'true') {
+    return true;
+  }
+
+  return process.env.WEB_ORIGIN?.split(',').map((origin) => origin.trim()).filter(Boolean) ?? ['http://localhost:3000'];
+}
