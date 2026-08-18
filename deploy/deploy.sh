@@ -16,6 +16,7 @@ LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-}"
 SMTP_URL="${SMTP_URL:-}"
 EMAIL_FROM="${EMAIL_FROM:-}"
 OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
+WEB_ORIGINS="${WEB_ORIGINS:-https://${DOMAIN},http://${DOMAIN}}"
 
 log() { printf '\n[%s] %s\n' "$(date '+%F %T')" "$*"; }
 die() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
@@ -104,7 +105,7 @@ sync_runtime_env_values() {
   set_env_value "NEXT_PUBLIC_APP_URL" "https://${DOMAIN}"
   set_env_value "API_PORT" "${API_PORT}"
   set_env_value "API_PUBLIC_URL" "https://${DOMAIN}"
-  set_env_value "WEB_ORIGIN" "https://${DOMAIN}"
+  set_env_value "WEB_ORIGIN" "${WEB_ORIGINS}"
   set_env_value "WORKER_CONCURRENCY" "${WORKER_CONCURRENCY:-2}"
   set_env_value "DATABASE_URL" "${DATABASE_URL}"
   set_env_value "REDIS_URL" "redis://127.0.0.1:6379/0"
@@ -162,7 +163,7 @@ NEXT_PUBLIC_API_BASE_URL=$(env_quote "https://${DOMAIN}/v1")
 NEXT_PUBLIC_APP_URL=$(env_quote "https://${DOMAIN}")
 API_PORT=$(env_quote "${API_PORT}")
 API_PUBLIC_URL=$(env_quote "https://${DOMAIN}")
-WEB_ORIGIN=$(env_quote "https://${DOMAIN}")
+WEB_ORIGIN=$(env_quote "${WEB_ORIGINS}")
 WORKER_CONCURRENCY=$(env_quote "${WORKER_CONCURRENCY:-2}")
 
 DATABASE_URL=$(env_quote "${DATABASE_URL}")

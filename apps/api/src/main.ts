@@ -11,7 +11,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix('v1');
   app.enableCors({
-    origin: process.env.WEB_ORIGIN?.split(',') ?? ['http://localhost:3000'],
+    origin: process.env.WEB_ORIGIN?.split(',').map((origin) => origin.trim()).filter(Boolean) ?? ['http://localhost:3000'],
     credentials: true
   });
   app.enableShutdownHooks();

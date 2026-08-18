@@ -38,6 +38,17 @@ If you paste the command into a shell, keep the trailing `\` as the final charac
 sudo DOMAIN=app.example.com OPENROUTER_API_KEY='your-openrouter-key' SMTP_URL='smtps://user:password@smtp.example.com:465' EMAIL_FROM='noreply@app.example.com' bash deploy/deploy.sh
 ```
 
+If the same app is reachable from more than one browser origin, for example apex plus subdomain, pass every allowed origin exactly as the browser sees it:
+
+```bash
+sudo DOMAIN=app.cryphero.com \
+  WEB_ORIGINS='https://app.cryphero.com,https://cryphero.com,http://app.cryphero.com,http://cryphero.com' \
+  OPENROUTER_API_KEY='your-openrouter-key' \
+  SMTP_URL='smtps://user:password@smtp.example.com:465' \
+  EMAIL_FROM='noreply@app.cryphero.com' \
+  bash deploy/deploy.sh
+```
+
 For HTTPS on the first deployment, point DNS at the VPS first, then run:
 
 ```bash
